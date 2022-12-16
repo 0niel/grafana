@@ -48,9 +48,9 @@ MSI_GENERATOR_VERSION = '1.0.0'
 #############################
 WIX_HOME = '/home/xclient/wix'
 WINE_CMD = '/usr/bin/wine64'  # or just wine for 32bit
-CANDLE = '{} {}/candle.exe'.format(WINE_CMD, WIX_HOME)
-LIGHT = '{} {}/light.exe'.format(WINE_CMD, WIX_HOME)
-HEAT = '{} {}/heat.exe'.format(WINE_CMD, WIX_HOME)
+CANDLE = f'{WINE_CMD} {WIX_HOME}/candle.exe'
+LIGHT = f'{WINE_CMD} {WIX_HOME}/light.exe'
+HEAT = f'{WINE_CMD} {WIX_HOME}/heat.exe'
 NSSM_VERSION = '2.24'
 DIST_LOCATION = '/tmp/dist'
 #############################
@@ -100,10 +100,10 @@ def remove_long_paths():
     ]
     for file in long_files:
         if os.path.isfile(file):
-            print('Removing: {}'.format(file))
+            print(f'Removing: {file}')
             os.remove(file)
         else:
-            print('Skipped: {}'.format(file))
+            print(f'Skipped: {file}')
 
 
 def build_msi(zip_file, extracted_name, PRODUCT_VERSION, grafana_hash, config, features, is_enterprise):
@@ -120,9 +120,9 @@ def build_msi(zip_file, extracted_name, PRODUCT_VERSION, grafana_hash, config, f
     # and ends up with paths longer
     # than light.exe can parse (windows issue)
     # Once extracted, rename it to grafana without the version included
-    zip_file_path = '{}/{}'.format(target_dir_name, extracted_name)
-    rename_to = '{}/grafana'.format(target_dir_name)
-    print('Renaming extracted path {} to {}'.format(zip_file_path, rename_to))
+    zip_file_path = f'{target_dir_name}/{extracted_name}'
+    rename_to = f'{target_dir_name}/grafana'
+    print(f'Renaming extracted path {zip_file_path} to {rename_to}')
     os.system('ls -al /tmp/a')
     print('Before:')
     os.rename(zip_file_path, rename_to)
@@ -166,9 +166,9 @@ def build_msi(zip_file, extracted_name, PRODUCT_VERSION, grafana_hash, config, f
 
     shutil.copy2(outfile, target_dir_name)
     nssm_file = get_nssm('/tmp/cache', NSSM_VERSION)
-    if not os.path.isdir(target_dir_name + '/nssm'):
-        os.mkdir(target_dir_name + '/nssm')
-    extract_zip(nssm_file, target_dir_name + '/nssm')
+    if not os.path.isdir(f'{target_dir_name}/nssm'):
+        os.mkdir(f'{target_dir_name}/nssm')
+    extract_zip(nssm_file, f'{target_dir_name}/nssm')
     print('HARVEST COMPLETE')
     os.chdir(src_dir)
     generate_firewall_wxs(env, PRODUCT_VERSION, '/tmp/scratch/grafana-firewall.wxs', target_dir_name)
@@ -182,31 +182,25 @@ def build_msi(zip_file, extracted_name, PRODUCT_VERSION, grafana_hash, config, f
     os.chdir('/tmp/scratch')
     try:
         filename = 'grafana-service.wxs'
-        cmd = '{} -ext WixFirewallExtension -ext WixUtilExtension -v -arch x64 {}'.format(CANDLE, filename)
+        cmd = f'{CANDLE} -ext WixFirewallExtension -ext WixUtilExtension -v -arch x64 {filename}'
         print(cmd)
         os.system(cmd)
         shutil.copy2('grafana-service.wixobj', target_dir_name)
         #
         filename = 'grafana-firewall.wxs'
-        cmd = '{} -ext WixFirewallExtension -ext WixUtilExtension -v -arch x64 {}'.format(
-            CANDLE,
-            filename)
+        cmd = f'{CANDLE} -ext WixFirewallExtension -ext WixUtilExtension -v -arch x64 {filename}'
         print(cmd)
         os.system(cmd)
         shutil.copy2('grafana-firewall.wixobj', target_dir_name)
         #
         filename = 'grafana-oss.wxs'
-        cmd = '{} -ext WixFirewallExtension -ext WixUtilExtension -v -arch x64 {}'.format(
-            CANDLE,
-            filename)
+        cmd = f'{CANDLE} -ext WixFirewallExtension -ext WixUtilExtension -v -arch x64 {filename}'
         print(cmd)
         os.system(cmd)
         shutil.copy2('grafana-oss.wixobj', target_dir_name)
         #
         filename = 'product.wxs'
-        cmd = '{} -ext WixFirewallExtension -ext WixUtilExtension -v -arch x64 {}'.format(
-            CANDLE,
-            filename)
+        cmd = f'{CANDLE} -ext WixFirewallExtension -ext WixUtilExtension -v -arch x64 {filename}'
         print(cmd)
         os.system(cmd)
         shutil.copy2('product.wixobj', target_dir_name)
@@ -234,15 +228,14 @@ def build_msi(zip_file, extracted_name, PRODUCT_VERSION, grafana_hash, config, f
     except Exception as ex:
         print(ex)
 
-    hash = ''
-    if grafana_hash:
-      hash = '-{}'.format(grafana_hash)
-
+    hash = f'-{grafana_hash}' if grafana_hash else ''
     # copy to scratch with version included
-    msi_filename = '/tmp/scratch/grafana-{}{}.windows-amd64.msi'.format(PRODUCT_VERSION, hash)
+    msi_filename = (
+        f'/tmp/scratch/grafana-{PRODUCT_VERSION}{hash}.windows-amd64.msi'
+    )
 
     if is_enterprise:
-      msi_filename = '/tmp/scratch/grafana-enterprise-{}{}.windows-amd64.msi'.format(PRODUCT_VERSION, hash)
+        msi_filename = f'/tmp/scratch/grafana-enterprise-{PRODUCT_VERSION}{hash}.windows-amd64.msi'
 
     shutil.copy2('grafana.msi', msi_filename)
     os.system('ls -al /tmp/scratch')
@@ -303,7 +296,7 @@ def main(file_loader, env, grafana_version, grafana_hash, zip_file, extracted_na
 
 
 if __name__ == '__main__':
-    print('MSI Generator Version: {}'.format(MSI_GENERATOR_VERSION))
+    print(f'MSI Generator Version: {MSI_GENERATOR_VERSION}')
 
     parser = argparse.ArgumentParser(
         description='Grafana MSI Generator',
@@ -325,30 +318,28 @@ if __name__ == '__main__':
     # if a build version is specified, pull it
     if args.build:
         grafana_version = args.build
-        print('Version Specified: {}'.format(grafana_version))
+        print(f'Version Specified: {grafana_version}')
     else:
         grafana_version, grafana_hash, is_enterprise = detect_version(DIST_LOCATION)
 
-    print('Detected Version: {}'.format(grafana_version))
+    print(f'Detected Version: {grafana_version}')
     if grafana_hash:
-        print('Detected Hash: {}'.format(grafana_hash))
-    print('Enterprise: {}'.format(is_enterprise))
+        print(f'Detected Hash: {grafana_hash}')
+    print(f'Enterprise: {is_enterprise}')
     if is_enterprise:
         if grafana_hash:
-            zip_file = '{}/grafana-enterprise-{}-{}.windows-amd64.zip'.format(DIST_LOCATION, grafana_version, grafana_hash)
-            extracted_name = 'grafana-{}-{}'.format(grafana_version, grafana_hash)
+            zip_file = f'{DIST_LOCATION}/grafana-enterprise-{grafana_version}-{grafana_hash}.windows-amd64.zip'
+            extracted_name = f'grafana-{grafana_version}-{grafana_hash}'
         else:
-            zip_file = '{}/grafana-enterprise-{}.windows-amd64.zip'.format(DIST_LOCATION, grafana_version)
-            extracted_name = 'grafana-{}'.format(grafana_version)
+            zip_file = f'{DIST_LOCATION}/grafana-enterprise-{grafana_version}.windows-amd64.zip'
+            extracted_name = f'grafana-{grafana_version}'
+    elif grafana_hash:
+        zip_file = f'{DIST_LOCATION}/grafana-{grafana_version}-{grafana_hash}.windows-amd64.zip'
+        extracted_name = f'grafana-{grafana_version}-{grafana_hash}'
     else:
-        # the file can have a build hash
-        if grafana_hash:
-            zip_file = '{}/grafana-{}-{}.windows-amd64.zip'.format(DIST_LOCATION, grafana_version, grafana_hash)
-            extracted_name = 'grafana-{}-{}'.format(grafana_version, grafana_hash)
-        else:
-            zip_file = '{}/grafana-{}.windows-amd64.zip'.format(DIST_LOCATION, grafana_version)
-            extracted_name = 'grafana-{}'.format(grafana_version)
-    print('ZipFile: {}'.format(zip_file))
+        zip_file = f'{DIST_LOCATION}/grafana-{grafana_version}.windows-amd64.zip'
+        extracted_name = f'grafana-{grafana_version}'
+    print(f'ZipFile: {zip_file}')
     # check if file downloaded
 
     if not os.path.isfile(zip_file):
