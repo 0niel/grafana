@@ -24,13 +24,12 @@ class EventEncoder(json.JSONEncoder):
 
 
 def view_events(request):
-    if request.method == "GET":
-        context = { 'events' : fetch(request),
-            'slash' : get_script_prefix()
-        }
-        return render_to_response("events.html", context)
-    else:
+    if request.method != "GET":
         return post_event(request)
+    context = { 'events' : fetch(request),
+        'slash' : get_script_prefix()
+    }
+    return render_to_response("events.html", context)
 
 def detail(request, event_id):
     e = get_object_or_404(models.Event, pk=event_id)
@@ -41,36 +40,38 @@ def detail(request, event_id):
 
 
 def post_event(request):
-    if request.method == 'POST':
-        event = json.loads(request.body)
-        assert isinstance(event, dict)
-
-        values = {}
-        values["what"] = event["what"]
-        values["tags"] = event.get("tags", None)
-        values["when"] = datetime.datetime.fromtimestamp(
-            event.get("when", time.time()))
-        if "data" in event:
-            values["data"] = event["data"]
-
-        e = models.Event(**values)
-        e.save()
-
-        return HttpResponse(status=200)
-    else:
+    if request.method != 'POST':
         return HttpResponse(status=405)
+    event = json.loads(request.body)
+    assert isinstance(event, dict)
+
+    values = {"what": event["what"], "tags": event.get("tags", None)}
+    values["when"] = datetime.datetime.fromtimestamp(
+        event.get("when", time.time()))
+    if "data" in event:
+        values["data"] = event["data"]
+
+    e = models.Event(**values)
+    e.save()
+
+    return HttpResponse(status=200)
 
 def get_data(request):
-    if 'jsonp' in request.REQUEST:
-        response = HttpResponse(
-          "%s(%s)" % (request.REQUEST.get('jsonp'),
-              json.dumps(fetch(request), cls=EventEncoder)),
-          mimetype='text/javascript')
-    else:
-        response = HttpResponse(
+    return (
+        HttpResponse(
+            "%s(%s)"
+            % (
+                request.REQUEST.get('jsonp'),
+                json.dumps(fetch(request), cls=EventEncoder),
+            ),
+            mimetype='text/javascript',
+        )
+        if 'jsonp' in request.REQUEST
+        else HttpResponse(
             json.dumps(fetch(request), cls=EventEncoder),
-            mimetype="application/json")
-    return response
+            mimetype="application/json",
+        )
+    )
 
 def fetch(request):
     #XXX we need to move to USE_TZ=True to get rid of naive-time conversions
